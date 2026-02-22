@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>تمرين عربي تفاعلي</title>
+  <style>
+    :root{font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif;}
+    body{margin:0;background:#f6f7fb;color:#111;}
+    .wrap{max-width:980px;margin:0 auto;padding:16px;}
+    .card{background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.08);padding:16px;margin:12px 0;}
+    h1{font-size:20px;margin:0 0 8px;}
+    .sub{opacity:.8;margin:0 0 12px;font-size:14px;}
+
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+    .pill{border:1px solid #e6e7ee;background:#fff;border-radius:999px;padding:8px 12px;cursor:pointer;font-weight:600}
+    .pill[aria-pressed="true"]{background:#111;color:#fff;border-color:#111}
+
+    .qtext{font-size:18px;line-height:1.9}
+    .blank{display:inline-block;min-width:84px;border-bottom:2px dashed #bbb;margin:0 4px;vertical-align:baseline}
+
+    .word{display:inline-block;padding:0 6px;border-radius:10px;background:#eef3ff;cursor:pointer;border:1px solid #d9e3ff;font-weight:700}
+    .word:hover{filter:brightness(.98)}
+
+    .options{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
+    @media(min-width:720px){.options{grid-template-columns:1fr 1fr}}
+
+    .opt{border:1px solid #e6e7ee;border-radius:14px;padding:12px 14px;cursor:pointer;background:#fff;
+         display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .opt:hover{background:#fafafe}
+    .opt .tag{opacity:.75;font-weight:700}
+    .opt[disabled]{cursor:not-allowed;opacity:.85}
+
+    .result{margin-top:12px;padding:12px 14px;border-radius:14px;border:1px solid #e6e7ee;background:#fafafe}
+    .result.good{border-color:#bfe8c6;background:#f0fbf2}
+    .result.bad{border-color:#f2c1c1;background:#fff1f1}
+
+    .grid2{display:grid;grid-template-columns:1fr;gap:12px}
+    @media(min-width:860px){.grid2{grid-template-columns:1.2fr .8fr}}
+
+    .vocabList{display:flex;flex-direction:column;gap:10px}
+    .vitem{border:1px solid #e6e7ee;border-radius:14px;padding:10px 12px;background:#fff}
+    .vhead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .vword{font-weight:900}
+    .vroot{opacity:.8;font-size:13px}
+    .vmean{margin-top:6px;opacity:.9;font-size:14px;line-height:1.6}
+
+    /* Modal */
+    .modalBack{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
+    .modal{max-width:720px;width:100%;background:#fff;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden}
+    .modalHeader{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #eee}
+    .modalTitle{font-weight:900}
+    .close{border:0;background:#111;color:#fff;border-radius:12px;padding:8px 12px;cursor:pointer}
+    .modalBody{padding:14px}
+    .kvs{display:grid;grid-template-columns:1fr;gap:10px}
+    @media(min-width:720px){.kvs{grid-template-columns:1fr 1fr}}
+    .kv{border:1px solid #e6e7ee;border-radius:14px;padding:10px 12px;background:#fafafe}
+    .kv .k{opacity:.7;font-size:13px;font-weight:700}
+    .kv .v{margin-top:6px;font-size:15px;line-height:1.7}
+
+    .hint{font-size:13px;opacity:.75;margin-top:8px}
+
+    .footer{opacity:.7;font-size:12px;margin:10px 2px 0}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="toolbar">
+        <div>
+          <h1 id="title"></h1>
+          <p class="sub" id="subtitle"></p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="pill" id="btnAR" aria-pressed="true">عربي</button>
+          <button class="pill" id="btnTR" aria-pressed="false">Türkçe</button>
+          <button class="pill" id="btnReset" aria-pressed="false">إعادة المحاولة</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div id="questionBlock"></div>
+        <div class="options" id="options"></div>
+        <div id="result"></div>
+        <div class="footer" id="tip"></div>
+      </div>
+
+      <div class="card">
+        <h2 style="margin:0 0 10px;font-size:16px">مفردات مهمّة (اضغط/ي عليها)</h2>
+        <div class="vocabList" id="vocabList"></div>
+        <div class="hint" id="vocabHint"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modalBack" id="modalBack" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <div class="modalHeader">
+        <div class="modalTitle" id="modalTitle">—</div>
+        <button class="close" id="closeModal">إغلاق</button>
+      </div>
+      <div class="modalBody" id="modalBody"></div>
+    </div>
+  </div>
+
+<script>
+  // ==========================================
+  // ✅ هذا القالب يدعم أسئلة متعددة (Next/Prev)
+  // ==========================================
+
+  // =========================
+  // 1) عدّل هذا الجزء فقط ✅
+  // =========================
+  const DATA = {
+    meta: {
+      title_ar: "تمارين عربي تفاعلية",
+      title_tr: "Etkileşimli Arapça Alıştırmalar",
+      subtitle_ar: "اضغط/ي على الكلمات الملوّنة لمعرفة الجذر والمعنى، ثم اختَر/ي الإجابة الصحيحة.",
+      subtitle_tr: "Renkli kelimelere tıklayarak kök ve anlamı gör, sonra doğru şıkkı seç.",
+    },
+
+    // ✅ أضِف/ي أسئلة جديدة داخل هذا المصفوفة
+    questions: [
+      {
+        id: "q2_heritage",
+        tip_ar: "فكرة سريعة: وجود كلمة (فَخْرًا) بعد الفراغ يدل على تركيب (مَبْعَثُ فَخْرٍ).",
+        tip_tr: "İpucu: Boşluktan sonra (فخرًا) geldiği için en uygun kalıp: (مبعث فخر).",
+
+        text_ar:
+          "<span class=\"blank\"></span> " +
+          "<span class=\"word\" data-key=\"fakhr\">فَخْرًا</span> " +
+          "لِلْأُمَمِ وَ" +
+          "<span class=\"word\" data-key=\"i3tizaz\">اعْتِزازًا</span> " +
+          "و" +
+          "<span class=\"word\" data-key=\"dalil\">دَليلًا</span> " +
+          "عَلَى " +
+          "<span class=\"word\" data-key=\"3araqah\">عَراقَتِها</span> " +
+          "و" +
+          "<span class=\"word\" data-key=\"asal\">أَصالَتِها</span>." ,
+
+        text_tr:
+          "(Boşluk) milletler için bir gurur kaynağı, onur ve köklülük ile özgünlüğe bir kanıttır.",
+
+        prompt_ar: "اختر الكلمة الأنسب للفراغ:",
+        prompt_tr: "Boşluğa en uygun kelimeyi seç:",
+
+        options: [
+          { tag: "A", ar: "مَأْوًى", tr: "sığınak / barınak" },
+          { tag: "B", ar: "مَعْبَر", tr: "geçit" },
+          { tag: "C", ar: "مَبْعَث", tr: "kaynak / sebep" },
+          { tag: "D", ar: "مَعْبَد", tr: "tapınak" },
+          { tag: "E", ar: "مَسْعًى", tr: "çaba / hedef" }
+        ],
+        correctTag: "C",
+
+        explain_ar:
+          "الصحيح: (مَبْعَث) لأن التعبير العربي الشائع هو: (مَبْعَثُ فَخْرٍ) أي: سبب/مصدر للفخر.",
+        explain_tr:
+          "Doğru cevap: (مَبْعَث) çünkü doğru kalıp: (مَبْعَثُ فَخْرٍ) yani gurur kaynağı/sebebi.",
+
+        // ✅ مفردات هذا السؤال فقط
+        vocab: {
+          mabath: {
+            word_ar: "مَبْعَث",
+            root: "ب-ع-ث",
+            meaning_ar: "سبب / مصدر / منطلق",
+            meaning_tr: "sebep / kaynak / çıkış noktası",
+            example_ar: "اجتهادُكِ مَبْعَثُ فَخْرٍ.",
+            example_tr: "Çaban bir gurur kaynağıdır."
+          },
+          fakhr: {
+            word_ar: "فَخْرًا",
+            root: "ف-خ-ر",
+            meaning_ar: "اعتزاز وسعادة بالإنجاز أو الانتماء",
+            meaning_tr: "gurur",
+            example_ar: "هذا النجاحُ فَخْرٌ لنا.",
+            example_tr: "Bu başarı bizim için gurur."
+          },
+          i3tizaz: {
+            word_ar: "اعْتِزازًا",
+            root: "ع-ز-ز",
+            meaning_ar: "فخر داخلي + عِزّة وكرامة",
+            meaning_tr: "onur / gurur",
+            example_ar: "أشعرُ باعتزازٍ بلغتي.",
+            example_tr: "Dilime karşı onur duyuyorum."
+          },
+          dalil: {
+            word_ar: "دَليلًا",
+            root: "د-ل-ل",
+            meaning_ar: "برهان / علامة تثبت شيئًا",
+            meaning_tr: "kanıt / delil / işaret",
+            example_ar: "هذا دليلٌ على صدقِكِ.",
+            example_tr: "Bu, dürüst olduğunun kanıtı."
+          },
+          "3araqah": {
+            word_ar: "عَراقَتِها",
+            root: "ع-ر-ق",
+            meaning_ar: "قِدَم وأصالة وتاريخ عميق",
+            meaning_tr: "köklülük / tarihi derinlik",
+            example_ar: "هذه المدينةُ مشهورةٌ بعراقتِها.",
+            example_tr: "Bu şehir köklülüğüyle ünlüdür."
+          },
+          asal: {
+            word_ar: "أَصالَتِها",
+            root: "أ-ص-ل",
+            meaning_ar: "غير مقلَّد، مرتبط بالأصل (authentic)",
+            meaning_tr: "özgünlük / otantiklik",
+            example_ar: "هذا الفنُّ جميلٌ بأصالته.",
+            example_tr: "Bu sanat özgünlüğüyle güzel."
+          }
+        }
+      }
+
+      // ✅ مثال سريع لإضافة سؤال جديد:
+      // ,{
+      //   id: "qX",
+      //   tip_ar: "...",
+      //   tip_tr: "...",
+      //   text_ar: "... <span class=\"word\" data-key=\"key1\">كلمة</span> ...",
+      //   text_tr: "...",
+      //   prompt_ar: "...",
+      //   prompt_tr: "...",
+      //   options: [ {tag:"A", ar:"...", tr:"..."}, ... ],
+      //   correctTag: "B",
+      //   explain_ar: "...",
+      //   explain_tr: "...",
+      //   vocab: { key1:{word_ar:"...", root:"...", meaning_ar:"...", meaning_tr:"...", example_ar:"...", example_tr:"..."} }
+      // }
+    ]
+  };
+
+  // =====================================
+  // 2) من هنا لا تحتاج تعدّل عادةً
+  // =====================================
+  let LANG = "ar";        // ar | tr
+  let qIndex = 0;          // current question index
+  let answers = {};        // { [qIndex]: { selectedTag, correct } }
+
+  const $ = (sel) => document.querySelector(sel);
+  const titleEl = $("#title");
+  const subtitleEl = $("#subtitle");
+  const questionBlock = $("#questionBlock");
+  const optionsEl = $("#options");
+  const resultEl = $("#result");
+  const tipEl = $("#tip");
+  const vocabListEl = $("#vocabList");
+  const vocabHintEl = $("#vocabHint");
+
+  const modalBack = $("#modalBack");
+  const modalTitle = $("#modalTitle");
+  const modalBody = $("#modalBody");
+
+  function currentQ(){
+    return DATA.questions[qIndex];
+  }
+
+  function setLang(next){
+    LANG = next;
+    $("#btnAR").setAttribute("aria-pressed", LANG === "ar" ? "true" : "false");
+    $("#btnTR").setAttribute("aria-pressed", LANG === "tr" ? "true" : "false");
+
+    // RTL/LTR
+    document.documentElement.lang = LANG === "ar" ? "ar" : "tr";
+    document.documentElement.dir = LANG === "ar" ? "rtl" : "ltr";
+
+    render();
+  }
+
+  function render(){
+    // header
+    titleEl.textContent = LANG === "ar" ? DATA.meta.title_ar : DATA.meta.title_tr;
+    subtitleEl.textContent = LANG === "ar" ? DATA.meta.subtitle_ar : DATA.meta.subtitle_tr;
+
+    const Q = currentQ();
+    tipEl.textContent = LANG === "ar" ? (Q.tip_ar || "") : (Q.tip_tr || "");
+
+    // question nav row
+    const total = DATA.questions.length;
+    const progressTxt = LANG === "ar" ? `سؤال ${qIndex + 1} / ${total}` : `Soru ${qIndex + 1} / ${total}`;
+    const prevTxt = LANG === "ar" ? "السابق" : "Önceki";
+    const nextTxt = LANG === "ar" ? "التالي" : "Sonraki";
+    const jumpTxt = LANG === "ar" ? "اذهب إلى" : "Git";
+
+    const qText = LANG === "ar" ? Q.text_ar : Q.text_tr;
+    const qPrompt = LANG === "ar" ? Q.prompt_ar : Q.prompt_tr;
+
+    questionBlock.innerHTML = `
+      <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px">
+        <div style="font-weight:900">${progressTxt}</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="pill" id="prevQ" type="button">${prevTxt}</button>
+          <button class="pill" id="nextQ" type="button">${nextTxt}</button>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="opacity:.75;font-size:13px;font-weight:700">${jumpTxt}</span>
+            <select id="qSelect" class="pill" style="padding:8px 10px">
+              ${Array.from({length: total}).map((_,i)=>`
+                <option value="${i}" ${i===qIndex?"selected":""}>${LANG === "ar" ? `سؤال ${i+1}` : `Soru ${i+1}`}</option>
+              `).join("")}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="qtext">${qText}</div>
+      <div class="hint" style="margin-top:10px">${qPrompt}</div>
+    `;
+
+    // nav handlers
+    $("#prevQ").addEventListener("click", () => goTo(qIndex - 1));
+    $("#nextQ").addEventListener("click", () => goTo(qIndex + 1));
+    $("#qSelect").addEventListener("change", (e) => goTo(parseInt(e.target.value, 10)));
+
+    // disable prev/next at ends
+    $("#prevQ").disabled = (qIndex === 0);
+    $("#nextQ").disabled = (qIndex === total - 1);
+
+    // word clicks in question
+    questionBlock.querySelectorAll(".word").forEach(span => {
+      span.addEventListener("click", () => openWord(span.dataset.key));
+    });
+
+    // options
+    optionsEl.innerHTML = "";
+    const answered = answers[qIndex];
+
+    Q.options.forEach(opt => {
+      const btn = document.createElement("button");
+      btn.className = "opt";
+      btn.type = "button";
+      btn.innerHTML = `
+        <span style="display:flex;gap:10px;align-items:center">
+          <span class="tag">${opt.tag})</span>
+          <span style="font-size:18px;font-weight:900">${LANG === "ar" ? opt.ar : opt.tr}</span>
+        </span>
+        <span style="opacity:.7;font-size:12px">${LANG === "ar" ? "اضغط للاختيار" : "Seç"}</span>
+      `;
+
+      btn.addEventListener("click", () => choose(opt.tag));
+      optionsEl.appendChild(btn);
+    });
+
+    // if already answered, lock and highlight
+    if(answered){
+      lockAndHighlight(answered.selectedTag);
+      renderResult(answered.selectedTag);
+    } else {
+      // fresh state
+      resultEl.innerHTML = "";
+      optionsEl.querySelectorAll("button").forEach(b => b.disabled = false);
+    }
+
+    // vocab list (current question vocab)
+    vocabListEl.innerHTML = "";
+    const vocab = Q.vocab || {};
+    const keys = Object.keys(vocab);
+
+    keys.forEach(k => {
+      const v = vocab[k];
+      const item = document.createElement("div");
+      item.className = "vitem";
+      item.innerHTML = `
+        <div class="vhead">
+          <div>
+            <div class="vword">${v.word_ar}</div>
+            <div class="vroot">${LANG === "ar" ? "الجذر" : "Kök"}: ${v.root}</div>
+          </div>
+          <button class="pill" style="padding:6px 10px" type="button">${LANG === "ar" ? "تفاصيل" : "Detay"}</button>
+        </div>
+        <div class="vmean">${LANG === "ar" ? v.meaning_ar : v.meaning_tr}</div>
+      `;
+      item.querySelector("button").addEventListener("click", () => openWord(k));
+      vocabListEl.appendChild(item);
+    });
+
+    vocabHintEl.textContent = LANG === "ar"
+      ? "ملاحظة: اضغط/ي على الكلمة في الجملة أو في القائمة لفتح بطاقة الجذر والمعنى والأمثلة."
+      : "Not: Kelimeye (cümlede veya listede) tıklayarak kök/anlam ve örnekleri açabilirsin.";
+
+    // If the blank should show the correct word after answering, we do it in renderResult()
+  }
+
+  function goTo(nextIndex){
+    if(nextIndex < 0 || nextIndex >= DATA.questions.length) return;
+    qIndex = nextIndex;
+    render();
+  }
+
+  function choose(tag){
+    const Q = currentQ();
+    // prevent re-answering
+    if(answers[qIndex]) return;
+    answers[qIndex] = { selectedTag: tag, correct: tag === Q.correctTag };
+
+    lockAndHighlight(tag);
+    renderResult(tag);
+  }
+
+  function lockAndHighlight(selectedTag){
+    const Q = currentQ();
+    // disable all
+    optionsEl.querySelectorAll("button").forEach(b => b.disabled = true);
+
+    optionsEl.querySelectorAll("button").forEach(b => {
+      const btag = (b.querySelector(".tag")?.textContent || "").trim().replace(")","" );
+      if(btag === Q.correctTag){
+        b.style.borderColor = "#7bd08a";
+        b.style.background = "#f0fbf2";
+      }
+      if(btag === selectedTag && selectedTag !== Q.correctTag){
+        b.style.borderColor = "#f1a1a1";
+        b.style.background = "#fff1f1";
+      }
+    });
+  }
+
+  function renderResult(selectedTag){
+    const Q = currentQ();
+    const ok = selectedTag === Q.correctTag;
+
+    const explain = LANG === "ar" ? Q.explain_ar : Q.explain_tr;
+    const goodTxt = LANG === "ar" ? "إجابة صحيحة ✅" : "Doğru ✅";
+    const badTxt  = LANG === "ar" ? "إجابة غير صحيحة ❌" : "Yanlış ❌";
+    const correctLabel = LANG === "ar" ? "الإجابة الصحيحة" : "Doğru cevap";
+
+    const correctOpt = Q.options.find(o => o.tag === Q.correctTag);
+
+    // Fill the blank with the correct word (Arabic only) after answering
+    // If you want it for Turkish too, you can extend this.
+    const blankEl = questionBlock.querySelector(".blank");
+    if(blankEl){
+      blankEl.style.borderBottom = "0";
+      blankEl.style.minWidth = "auto";
+      blankEl.innerHTML = `<span class="word" data-key="mabath">${correctOpt.ar}</span>`;
+      blankEl.querySelector(".word").addEventListener("click", () => openWord("mabath"));
+    }
+
+    resultEl.innerHTML = `
+      <div class="result ${ok ? "good" : "bad"}">
+        <div style="font-weight:900;font-size:16px">${ok ? goodTxt : badTxt}</div>
+        <div style="margin-top:6px;line-height:1.8">${explain}</div>
+        <div style="margin-top:10px;opacity:.85">
+          <strong>${correctLabel}:</strong> ${Q.correctTag}) ${correctOpt.ar}
+          <span style="opacity:.7">— ${correctOpt.tr}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function openWord(key){
+    const Q = currentQ();
+    const vocab = (Q.vocab || {});
+    const v = vocab[key];
+
+    if(!v){
+      modalTitle.textContent = LANG === "ar" ? "لا توجد بطاقة لهذه الكلمة" : "Bu kelime için kart yok";
+      modalBody.innerHTML = `<div class="kv"><div class="v">${LANG === "ar" ? "أضفها داخل vocab الخاصة بهذا السؤال ثم اربطها بـ data-key." : "Bu sorunun vocab kısmına ekleyip data-key ile bağla."}</div></div>`;
+      showModal();
+      return;
+    }
+
+    modalTitle.textContent = v.word_ar;
+    modalBody.innerHTML = `
+      <div class="kvs">
+        <div class="kv"><div class="k">${LANG === "ar" ? "الجذر" : "Kök"}</div><div class="v">${v.root}</div></div>
+        <div class="kv"><div class="k">${LANG === "ar" ? "المعنى" : "Anlam"}</div><div class="v">${LANG === "ar" ? v.meaning_ar : v.meaning_tr}</div></div>
+        <div class="kv" style="grid-column:1/-1"><div class="k">${LANG === "ar" ? "مثال عربي" : "Arapça örnek"}</div><div class="v">${v.example_ar}</div></div>
+        <div class="kv" style="grid-column:1/-1"><div class="k">${LANG === "ar" ? "ترجمة تركية" : "Türkçe"}</div><div class="v">${v.example_tr}</div></div>
+      </div>
+      <div class="hint">${LANG === "ar" ? "ملاحظة: كرّر/ي المثال بصوتٍ عالٍ 3 مرات." : "Not: Örneği 3 kez yüksek sesle tekrar et."}</div>
+    `;
+    showModal();
+  }
+
+  function showModal(){
+    modalBack.style.display = "flex";
+    setTimeout(() => $("#closeModal").focus(), 30);
+  }
+
+  function closeModal(){
+    modalBack.style.display = "none";
+  }
+
+  // Reset ALL answers and go back to Q1
+  function resetAll(){
+    answers = {};
+    qIndex = 0;
+    resultEl.innerHTML = "";
+    render();
+  }
+
+  // buttons
+  $("#btnAR").addEventListener("click", () => setLang("ar"));
+  $("#btnTR").addEventListener("click", () => setLang("tr"));
+  $("#btnReset").addEventListener("click", resetAll);
+
+  $("#closeModal").addEventListener("click", closeModal);
+  modalBack.addEventListener("click", (e) => { if(e.target === modalBack) closeModal(); });
+  document.addEventListener("keydown", (e) => { if(e.key === "Escape") closeModal(); });
+
+  // initial render
+  render();
+</script>
+</body>
+</html>
